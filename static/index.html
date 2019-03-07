@@ -6,7 +6,7 @@
     <meta content='width=device-width; height=device-height; initial-scale=1.0; maximum-scale=1.0; user-scalable=0;' name='viewport' />
     <meta name="viewport" content="width=device-width" />
     <meta name="license" content="
-        Copyright 2013 Abram Hindle
+        Copyright 2013 Abram Hindle, jejewitt
         
         Licensed under the Apache License, Version 2.0 (the "License");
         you may not use this file except in compliance with the License.
@@ -23,6 +23,25 @@
     <script src="json2.js"></script>
   </head> 
   <body bgcolor="black" height="100%" width="100%"> 
+    <!-- https://www.w3schools.com/css/css3_buttons.asp  --> <!-- button styling from -->
+    <div style="background-color:gray;padding:1%;">
+
+    <button type="button" style="background-color:#4CAF50;border:none;color:white;padding:1%; text-align:center;font-size:16px;z-index:5;" onclick="color('green');">Green</button>
+    <button type="button" style="background-color:#4CAF50;border:none;color:white;padding:1%; text-align:center;font-size:16px;z-index:5;" onclick="color('red');">Red</button>
+    <button type="button" style="background-color:#4CAF50;border:none;color:white;padding:1%; text-align:center;font-size:16px;z-index:5;" onclick="color('blue');">Blue</button>
+    <input type="color" id='CF' style="background-color:#4CAF50;border:none;color:white;padding:0.75%; text-align:center;font-size:16px;z-index:5;" onchange="color(this.value);" value="#FFFFFF">
+    <span style="text-align:right; margin: 25%;">
+    <button type="button" style="background-color:#4CAF50;border:none;color:white;padding:1%; text-align:center;font-size:16px;z-index:5;" onclick="clear_frame();">Clear Canvas</button>
+    </span>
+    <span style="text-align:right;">
+
+    <input type="number" style="background-color:#4CAF50;border:none;color:white;padding:1%; text-align:center;font-size:16px;z-index:5;" onchange="setNumber(this.value);" placeholder="Enter a Number">
+
+    </span>
+    </div>
+
+
+
     <canvas id="c" width="100%" height="100%" style="-webkit-tap-highlight-color: transparent;"></canvas> 
     <script>
 var canvas = document.getElementById('c');
@@ -30,26 +49,29 @@ var host = window.location.host;
 var context = canvas.getContext("2d");
 var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
-
-
+var C = 'green';
+var circleSize = 1;
 function sendJSONXMLHTTPRequest(url, objects, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState==4) {
-            try {
-                if (xhr.status==200) {
-                    //XXX: parse some JSON from the request!
-                    //XXX: Pass the data to the callback!
-                }
-            } 
-            catch(e) {
-                alert('Error: ' + e.name);
-            }
-        }
-    };
-    //XXX: POST to a URL
-    //XXX: set the mimetype and the accept headers!
-    // Remember to use application/json !
+
+// https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
+// uploading JSON DaTa
+    fetch(url, {
+		method: 'POST',
+		body: JSON.stringify(objects),
+		headers:{
+			'Content-Type':'application/json',
+			'Accept':'application/json'
+		}
+    }).then(response => {
+    	// if(response.status ==200){
+    		// console.log("response");
+    		// console.log(response.json());
+    	// }
+    	return response.json();
+
+    }).then(response2 => {
+    	callback(response2);
+    });
 }
 
 
@@ -66,7 +88,18 @@ function drawCircle(context,entity) {
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        // lineTo(x, y);
+
+        stroke();
+
+
+        // beginPath();
+        // lineWidth = 3;
+        // fillStyle = entity["colour"];
+        // strokeStyle = fillStyle;
+        // moveTo(x, y);
+        // lineTo(x, y);
+        // stroke();          
     }
 }
 
@@ -136,15 +169,18 @@ function getPosition(e) {
 
 function addEntity(entity, data) {
     world[entity] = data;
-    drawNextFrame(); // (but should we?)
+    // drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
+    // url, objects, callback
+    url = 'http://'+host+ '/entity/'+entity;
+    sendJSONXMLHTTPRequest(url,data, ()=>{});
 
 }
 
 var counter = 0;
 function addEntityWithoutName(data) {
     //var name = "X"+Math.floor((Math.random()*100)+1);
-    var name = "X"+(counter++)%100;
+    var name = "X"+(counter++)%1000;
     addEntity(name,data);
 }
 
@@ -246,23 +282,46 @@ mouse = (function() {
 
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
-mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
-});
+// mouse.mousedowners.push(function(x,y,clicked,e) {
+//     addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+// });
 
-mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
-});
+// mouse.mouseuppers.push(function(x,y,clicked,e) {
+//     addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+// });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
-                          'radius':10});
+    addEntityWithoutName({'x':x,'y':y,'colour':C,
+                          'radius':circleSize});
 });
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    var url ='http://'+host + '/world';
+    // console.log(window.location.origin)
+    sendJSONXMLHTTPRequest(url, null, callback_update); 
     drawFrame();
+}
+
+function callback_update(data){
+    world = data;
+    drawNextFrame();
+}
+function clear_frame(){
+    console.log("pressed")
+    url = 'http://'+host+ '/clear';
+    sendJSONXMLHTTPRequest(url,{}, ()=>{});
+}
+
+function color(col){
+    C = col;
+}
+
+function setNumber(num){
+    if (num > 0){
+        circleSize = num;
+    }
 }
 
 // 30 frames per second
